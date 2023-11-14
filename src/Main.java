@@ -35,15 +35,15 @@ public class Main extends Application{
     Button step = new Button("step");
     step.setOnAction((ev)->{
         Platform.runLater(()->{
-            
-            
-            
             /* show boarder lines on the original image */
             SwingFXUtils.toFXImage(image.img, wi);
             gc.drawImage(wi,0,0);
+            image.setGroupByHex(10);
             for(Pixel pix : image.pixels){
-              //if(pix.isBorder()){
-              if(pix.x%10 == 0){
+            if(pix.isBorder()){
+                if(pix.getID() == 0){
+                    System.out.println("invalid");
+                }
                 gc.setStroke(Color.GREEN);
                 gc.strokeRect(pix.x,pix.y,1,1);
               }
