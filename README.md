@@ -1,6 +1,6 @@
 # VCells
 
-![VCells: Simple and Efficient Superpixels Using Edge-Weighted Centroidal Voronoi Tessellations](https://ieeexplore.ieee.org/abstract/document/6186738)の論文内容の実装です。
+[VCells: Simple and Efficient Superpixels Using Edge-Weighted Centroidal Voronoi Tessellations](https://ieeexplore.ieee.org/abstract/document/6186738)の論文内容の実装です。
 
 ## 実行環境
 実行環境は以下のとおりです。
@@ -20,7 +20,11 @@ javafx-sdk-17.0.7
 
 
 ## 実行方法
-make コマンドでウィンドウが起動します。
+このディレクトリで
+```
+make
+```
+を実行ことでウィンドウが起動します。
 
 スライダーは6角形の1ペンの長さを5から50まで指定することができ、初期状態では10が指定されています。
 
