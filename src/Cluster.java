@@ -23,6 +23,14 @@ public class Cluster{
     meanB = 0;
   }
 
+  public int getID(){
+    return id;
+  }
+
+  public int getSize(){
+    return num;
+  }
+
   public void addPixel(Pixel pixel){
     pixels.add(pixel);
     int R = (pixel.data & 0x00ff0000)>>16;
@@ -64,6 +72,10 @@ public class Cluster{
 
   public int getMeanRGB(){
     return (((int)meanR)<<16)+(((int)meanG)<<8)+(((int)meanB));
+  }
+
+  public float getColorCentoroid(){
+    return (float)(0.2989 * meanR + 0.5870 * meanG + 0.1140 * meanB);
   }
 
 }

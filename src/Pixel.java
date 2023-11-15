@@ -49,4 +49,11 @@ public class Pixel{
     return id;
   }
 
+  public float getGray(){
+    int R = (data & 0x00ff0000)>>16;
+    int G = (data & 0x0000ff00)>>8;
+    int B = (data & 0x000000ff);
+    return (float)(0.2989 * R + 0.5870 * G + 0.1140 * B);
+  }
+
 }

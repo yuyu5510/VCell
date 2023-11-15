@@ -5,7 +5,7 @@ import java.io.*;
 import java.awt.image.BufferedImage;
 
 public class Image{
-  public final static int RADIUS = 20;
+  public final static int RADIUS = 3;
   public final static int POWRADIUS = RADIUS*RADIUS;
   public final BufferedImage img;
   public final Pixel[] pixels;
@@ -39,9 +39,13 @@ public class Image{
       ArrayList<Pixel> neighbors = new ArrayList<Pixel>(); 
       for(int y=-RADIUS;y<=RADIUS;y++){
         for(int x=-RADIUS;x<=RADIUS;x++){
+          if(x == 0 && y == 0){
+            continue;
+          }
+          int nx = cx + x, ny = cy + y;
           if( x*x+y*y <= POWRADIUS &&
-              0 <= cx && cx< width && 0 <= cy && cy < height ){
-            neighbors.add(pixels[cx+cy*width]);
+              0 <= nx && nx< width && 0 <= ny && ny < height ){
+            neighbors.add(pixels[nx+ny*width]);
           }
         }
       }
@@ -96,69 +100,5 @@ public class Image{
     }
     return pixels[x+pixel.y*width];
   }
-
-  public void setGroupByHex(int edge_length){
-    int edge_root3_div2 = (int)(Math.sin(Math.PI / 3) * edge_length);
-    int counter = 1;
-    int start = 0;
-    Vec2 vector[] = new Vec2[6];
-    for(int y = 0;y < height + edge_root3_div2; y += edge_root3_div2){
-        for(int x = start;x < width + 3*edge_length; x += (3*edge_length)){
-           // center of hexagon
-           Vec2 centor = new Vec2(x, y);
-           vector[0] = new Vec2(edge_length, 0);
-           for(int i = 1;i < 6;i++){
-            vector[i] = centor.add(vector[0].rotate(Math.PI * i / 3));
-           }
-           vector[0] = centor.add(vector[0]);
-           for(int dy = -edge_length;dy <= edge_length;dy++){
-                for(int dx = -edge_length;dx <= edge_length;dx++){
-                    int nx = x + dx, ny = y + dy;
-                    if(nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
-                    for(int i = 0;i < 6;i++){
-                        Vec2 P = new Vec2(nx, ny);
-                        Vec2 AB = vector[i].subtract(centor);
-                        Vec2 BC = vector[(i + 1) % 6].subtract(vector[i]);
-                        Vec2 CA = centor.subtract(vector[(i + 1) % 6]);
-                        Vec2 AP = P.subtract(centor);
-                        Vec2 BP = P.subtract(vector[i]);
-                        Vec2 CP = P.subtract(vector[(i + 1) % 6]);
-                        
-                        if((AB.cross(AP) >= 0 && BC.cross(BP) >= 0 && CA.cross(CP) >= 0) 
-                            || (AB.cross(AP) <= 0 && BC.cross(BP) <= 0 && CA.cross(CP) <= 0)){
-                            pixels[nx + ny * width].setID(counter);
-                            break;
-                        }
-                    }
-                }
-           }
-           counter++;
-        }
-        if(start == 0) start = 3 * edge_length / 2;
-        else start = 0;
-    }
-
-
-    for(int y = 0;y < height;y++){
-        for(int x = 0;x < width;x++){
-            if(pixels[x + y * width].getID() == 0){
-                int dist = 1<<30, nearest = -1;
-                for(int dy = -edge_length;dy <= edge_length;dy++){
-                    for(int dx = -edge_length;dx <= edge_length;dx++){
-                        int nx = x + dx, ny = y + dy;
-                        if(nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
-                        if(pixels[nx + ny * width].getID() != 0 && dist > (dx * dx + dy * dy)){
-                            dist = dx * dx + dy * dy;
-                            nearest = pixels[nx + ny * width].getID();
-                            break;
-                        }
-                    }
-                }
-                pixels[x + y * width].setID(nearest);
-            }
-        }
-    }
-
-}
 
 }

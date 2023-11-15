@@ -18,11 +18,15 @@ public class Main extends Application{
   Image image;
   GraphicsContext gc;
   WritableImage wi;
+  VCell vcell;
+  int counter;
   
   public Main(){
     image = new Image("sample.bmp");
     image.initPixels();
     wi = new WritableImage(image.width, image.height);
+    vcell = new VCell(image);
+    counter = 0;
   }
   
   public void start(Stage stage){
@@ -30,30 +34,51 @@ public class Main extends Application{
     init.setOnAction((ev)->{
         SwingFXUtils.toFXImage(image.img, wi);
         gc.drawImage(wi,0,0);
+        image.initPixels();
+        counter = 0;
       }
       );
     Button step = new Button("step");
     step.setOnAction((ev)->{
-        Platform.runLater(()->{
-            /* show boarder lines on the original image */
-            SwingFXUtils.toFXImage(image.img, wi);
-            gc.drawImage(wi,0,0);
-            image.setGroupByHex(10);
-            for(Pixel pix : image.pixels){
-            if(pix.isBorder()){
-                if(pix.getID() == 0){
-                    System.out.println("invalid");
-                }
-                gc.setStroke(Color.GREEN);
-                gc.strokeRect(pix.x,pix.y,1,1);
-              }
+        Thread thread = new Thread(()->{
+            counter++;
+            if(counter == 1){
+                vcell.setGroupByHex(10);
             }
-          });
-      }
+            if(counter == 2){
+                vcell.EWCVT();
+            }
+            if(counter == 3){
+                vcell.DSB();
+            }
+            System.out.println("Number of Cluster : " + vcell.clusters.size());
+            Platform.runLater(()->{
+                /* show boarder lines on the original image */
+                SwingFXUtils.toFXImage(image.img, wi);
+                gc.drawImage(wi,0,0);
+                for(Pixel pix : image.pixels){
+                    if(pix.isBorder()){
+                        if(pix.getID() == -1){
+                            System.out.println("invalid");
+                        }
+                        gc.setStroke(Color.GREEN);
+                        gc.strokeRect(pix.x,pix.y,1,1);
+                    }
+                }
+            });
+          
+        });
+        thread.start();
+        }
       );
     Button finish = new Button("finish");
     finish.setOnAction((ev)->{
-        
+            try{
+                ImageUtil.save(image.img, "output.bmp");
+            }catch(Exception ex){
+                System.err.println(ex);
+            }
+            System.exit(0);
       }
       );
     Canvas can = new Canvas(image.width, image.height);
