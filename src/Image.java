@@ -28,7 +28,7 @@ public class Image{
     pixels = new Pixel[length];
   }
 
-  public void initPixels(){
+  synchronized public void initPixels(){
     for(int i=0;i<length;i++){
       int data = img.getRGB(i%width, i/width);
       pixels[i] = new Pixel(i%width, i/width, data, this);

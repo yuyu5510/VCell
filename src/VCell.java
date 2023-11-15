@@ -2,11 +2,13 @@ import java.util.List;
 import java.util.Queue;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import javafx.beans.value.ObservableValue;
 
 public class VCell {
-    public final static int LAMBDA = 300;
     public final Image image;
     public final List<Cluster> clusters;
+    public float M;
+    public float LAMBDA;
 
     public VCell(Image image){
         this.image = image;
@@ -30,6 +32,10 @@ public class VCell {
         //         );
     }
 
+    // calculate after setGroupByHex
+    public void setM(){
+        M = Math.max(Math.min((float)(Math.sqrt(clusters.size() / image.length) * 25), (float)10), (float)1);
+    }   
             
     public float EnergyCVT(){
         float energy = 0;
@@ -42,7 +48,7 @@ public class VCell {
         return energy;
     }
     
-    public float EnergyL(){
+    public float EnergyL_div_lambda(){
         float energy = 0;
         for(Pixel p: image.pixels){
             for(Pixel npix: p.getNeighbors()){
@@ -51,10 +57,14 @@ public class VCell {
                 }
             }
         }
-        return energy * LAMBDA;
+        return energy;
     }
 
-    public void setGroupByHex(int edge_length){
+    public void calculate_lambda(){
+        LAMBDA = M * EnergyCVT() / EnergyL_div_lambda();
+    }
+
+    synchronized public void setGroupByHex(int edge_length){
         clusters.clear();
         for(Pixel p: image.pixels){
             p.setID(-1);
@@ -123,9 +133,14 @@ public class VCell {
                 }
             }
         }
+
+        setM();
+        calculate_lambda();
     }
 
-    public void EWCVT(){
+    synchronized public void EWCVT(){
+        float energy_cvt = EnergyCVT();
+        float energy_l_div_lambda = EnergyL_div_lambda();
         boolean bPixelMoved = true;
         while(bPixelMoved){
             bPixelMoved = false;
@@ -152,6 +167,19 @@ public class VCell {
 
                 if(index != p.getID()){
                     bPixelMoved = true;
+                    
+                    energy_cvt -= (p.getGray() - clusters.get(p.getID()).getColorCentoroid()) * (p.getGray() - clusters.get(p.getID()).getColorCentoroid());
+                    energy_cvt += (p.getGray() - clusters.get(index).getColorCentoroid()) * (p.getGray() - clusters.get(index).getColorCentoroid());
+                    for(Pixel npix: p.getNeighbors()){
+                        // 自分から見た時と、他のピクセルから見た時の両方を考える
+                        if(p.getID() != npix.getID()){
+                            energy_l_div_lambda -= 2;
+                        } 
+                        if (index != npix.getID()){
+                            energy_l_div_lambda += 2;
+                        }
+                    }
+                    LAMBDA = M * energy_cvt / energy_l_div_lambda;
                     clusters.get(p.getID()).removePixel(p);
                     clusters.get(index).addPixel(p);
                     p.setID(index);
@@ -160,7 +188,8 @@ public class VCell {
         }
     }
 
-    public void DSB(){
+
+    synchronized public void DSB(){
         boolean is_visit_pixel[] = new boolean[image.length];
         boolean is_visit_cluster[] = new boolean[clusters.size()];
         for(int i = 0;i < image.length;i++){
@@ -209,7 +238,6 @@ public class VCell {
                 }
             }
         }
-
         clusters.get(id).removePixel(p);
         clusters.get(new_id).addPixel(p);
         p.setID(new_id);
