@@ -1,18 +1,33 @@
 import java.util.List;
 import java.util.Queue;
+import java.util.SortedSet;
+import java.util.TreeSet;
+import java.util.Iterator;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import javafx.beans.value.ObservableValue;
+import java.util.Collections;
+import java.util.Comparator;
 
 public class VCell {
     public final Image image;
     public final List<Cluster> clusters;
+    public final SortedSet<Pixel> border_pixels;
     public float M;
     public float LAMBDA;
+    public float ALPHA;
 
     public VCell(Image image){
         this.image = image;
         clusters = new ArrayList<Cluster>();
+        border_pixels = new TreeSet<Pixel>();
+    }
+
+    synchronized public void clear(){
+        image.initPixels();
+        clusters.clear();
+        border_pixels.clear();
     }
 
     public float dist(Pixel p, Cluster c){
@@ -97,10 +112,11 @@ public class VCell {
                             Vec2 BP = P.subtract(vector[i]);
                             Vec2 CP = P.subtract(vector[(i + 1) % 6]);
                             
-                            if((AB.cross(AP) >= 0 && BC.cross(BP) >= 0 && CA.cross(CP) >= 0) 
-                                || (AB.cross(AP) <= 0 && BC.cross(BP) <= 0 && CA.cross(CP) <= 0)){
-                                image.pixels[nx + ny * image.width].setID(counter);
-                                clusters.get(counter).addPixel(image.pixels[nx + ny * image.width]);
+                            if(((AB.cross(AP) >= 0 && BC.cross(BP) >= 0 && CA.cross(CP) >= 0) 
+                                || (AB.cross(AP) <= 0 && BC.cross(BP) <= 0 && CA.cross(CP) <= 0))
+                                && image.pixels[nx + ny * image.width].getID() == -1){
+                                    image.pixels[nx + ny * image.width].setID(counter);
+                                    clusters.get(counter).addPixel(image.pixels[nx + ny * image.width]);
                                 break;
                             }
                         }
@@ -134,6 +150,11 @@ public class VCell {
             }
         }
 
+        for(Pixel p: image.pixels){
+            if(p.isBorder()) {
+                border_pixels.add(p);
+            }
+        }
         setM();
         calculate_lambda();
     }
@@ -142,10 +163,17 @@ public class VCell {
         float energy_cvt = EnergyCVT();
         float energy_l_div_lambda = EnergyL_div_lambda();
         boolean bPixelMoved = true;
+        boolean bPixelNext = false;
+        Queue<Pixel> que = new ArrayDeque<Pixel>(image.length);
         while(bPixelMoved){
             bPixelMoved = false;
-            for (Pixel p: image.pixels){
-                if(!p.isBorder()) continue;
+            Iterator<Pixel> it = border_pixels.iterator();
+            while(it.hasNext()){
+                Pixel p = it.next();
+                if(!p.isBorder()) {
+                    it.remove();
+                    continue;
+                }
 
                 float min_dist = -1;
                 boolean first = true;
@@ -164,10 +192,11 @@ public class VCell {
                     }
                     //System.out.println("p: " + dist_pc + " " + p.getID() + " " + npix.getID());
                 }
-
+                
                 if(index != p.getID()){
                     bPixelMoved = true;
-                    
+                    //System.out.println("Changed");
+
                     energy_cvt -= (p.getGray() - clusters.get(p.getID()).getColorCentoroid()) * (p.getGray() - clusters.get(p.getID()).getColorCentoroid());
                     energy_cvt += (p.getGray() - clusters.get(index).getColorCentoroid()) * (p.getGray() - clusters.get(index).getColorCentoroid());
                     for(Pixel npix: p.getNeighbors()){
@@ -183,8 +212,20 @@ public class VCell {
                     clusters.get(p.getID()).removePixel(p);
                     clusters.get(index).addPixel(p);
                     p.setID(index);
+                    for(Pixel adp: p.getAdjacents()){
+                        if(adp.isBorder() && !border_pixels.contains(adp)){
+                            que.add(adp);
+                        }
+                    }
                 }
             }
+
+            while(!que.isEmpty()){
+                Pixel p = que.poll();
+                border_pixels.add(p);
+            }
+
+            System.out.println(border_pixels.size());
         }
     }
 
@@ -220,7 +261,7 @@ public class VCell {
         }
     }
 
-    public int FloodFill(Pixel p, int id, int new_id, boolean[] is_visit_pixel){
+    synchronized public int FloodFill(Pixel p, int id, int new_id, boolean[] is_visit_pixel){
         int ncc = 0;
         ArrayDeque<Pixel> que = new ArrayDeque<Pixel>(image.length);
         que.addLast(p);
@@ -242,5 +283,84 @@ public class VCell {
         clusters.get(new_id).addPixel(p);
         p.setID(new_id);
         return ncc;
+    }
+
+    synchronized public float distCluster(int x, int y){
+        return (clusters.get(x).getColorCentoroid() - clusters.get(y).getColorCentoroid()) 
+                * (clusters.get(x).getColorCentoroid() - clusters.get(y).getColorCentoroid())
+                + ALPHA * (clusters.get(x).getSize() + clusters.get(y).getSize()) * (clusters.get(x).getSize() + clusters.get(y).getSize());
+    }
+
+
+    synchronized public void MergeCells(int num){
+        //　クラスタをソート
+        // clusters.sort(new Comparator<Cluster>(){
+        //     @Override
+        //     public int compare(Cluster c1, Cluster c2){
+        //         return -c1.getSize() + c2.getSize();
+        //     }
+        // });
+
+        // int last = clusters.size() - 1;
+        // int sum = 0;
+        // for(int i = last; i >= 0;i--){
+        //     if(clusters.get(i).getSize() == 0){
+        //         clusters.remove(i);
+        //         last--;
+        //         continue;
+        //     }
+            
+        //     clusters.get(i).setID(i);
+        //     for(Pixel p: clusters.get(i).pixels){
+        //         p.setID(i);
+        //     }
+        // }
+        //
+        ALPHA = (float)(num * 10) / (float)(image.length);
+
+        while(clusters.size() > num){
+            clusters.sort(new Comparator<Cluster>(){
+                @Override
+                public int compare(Cluster c1, Cluster c2){
+                    return -c1.getSize() + c2.getSize();
+                }
+            });
+
+            int last = clusters.size() - 1;
+            int sum = 0;
+            for(int i = last; i >= 0;i--){
+                if(clusters.get(i).getSize() == 0){
+                    clusters.remove(i);
+                    last--;
+                    continue;
+                }
+                
+                clusters.get(i).setID(i);
+                for(Pixel p: clusters.get(i).pixels){
+                    p.setID(i);
+                }
+            }
+
+            float min_dist = 1<<30;
+            int new_id = -1;
+            for(Pixel p: clusters.get(last).pixels){
+                for(Pixel ap: p.getAdjacents()){
+                    if(ap.getID() != p.getID()){
+                        if(distCluster(p.getID(), ap.getID()) < min_dist){
+                            min_dist = distCluster(p.getID(), ap.getID());
+                            new_id = ap.getID();
+                        }
+                    }
+                }
+            }
+
+            System.out.println("Merge " + last + " " + new_id);
+            for (Pixel p: clusters.get(last).pixels){
+                clusters.get(new_id).addPixel(p);
+                p.setID(new_id);
+            }
+            clusters.remove(last);
+            last--;
+        }
     }
 }

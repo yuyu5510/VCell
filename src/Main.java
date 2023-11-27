@@ -27,6 +27,7 @@ public class Main extends Application{
   volatile int counter;
   volatile int hex_edge;
   volatile Thread thread;
+  volatile int merge_cells;
   
   public Main(){
     image = new Image("sample.bmp");
@@ -35,6 +36,7 @@ public class Main extends Application{
     vcell = new VCell(image);
     counter = 0;
     hex_edge = 20;
+    merge_cells = 100;
     thread = null;
   }
   
@@ -43,7 +45,7 @@ public class Main extends Application{
     init.setOnAction((ev)->{
         SwingFXUtils.toFXImage(image.img, wi);
         gc.drawImage(wi,0,0);
-        image.initPixels();
+        vcell.clear();
         counter = 0;
         hex_edge = 10;
         stage.setTitle("original");
@@ -77,6 +79,12 @@ public class Main extends Application{
                 stage.setTitle("DSB");
             });
             vcell.DSB();
+        }
+        if(counter == 4){
+            Platform.runLater(()->{
+                stage.setTitle("Merge Cells");
+            });
+            vcell.MergeCells(merge_cells);
         }
         // counter を使うのは高々1スレッドなので、synchronized は不要
         counter++;
@@ -152,11 +160,19 @@ public class Main extends Application{
                                         Number oldv, Number nv)->{
         hex_edge = (int)sliderhex.getValue();
     });
+
     sliderhex.setValue(10);
+
+    Slider slidermerge = new Slider(1, 1000, 100);
+    slidermerge.valueProperty().addListener((ObservableValue<? extends Number> ov,
+                                        Number oldv, Number nv)->{
+        merge_cells = (int)slidermerge.getValue();
+    });
+
     Canvas can = new Canvas(image.width, image.height);
     HBox buttons = new HBox();
     VBox root = new VBox();
-    root.getChildren().addAll(buttons, sliderhex, can);
+    root.getChildren().addAll(buttons, sliderhex, slidermerge, can);
     buttons.getChildren().addAll(init, step, finish);
     gc = can.getGraphicsContext2D();
     Scene scene = new Scene(root);

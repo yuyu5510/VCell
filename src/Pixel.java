@@ -1,9 +1,9 @@
 import java.util.List; 
 import java.util.ArrayList; 
 
-public class Pixel{
+public class Pixel implements Comparable<Pixel>{
   public final int x, y;
-  public final int data;
+  public int data;
   public final Image image;
   public int id;
   private List<Pixel> neighbors;
@@ -54,6 +54,11 @@ public class Pixel{
     int G = (data & 0x0000ff00)>>8;
     int B = (data & 0x000000ff);
     return (float)(0.2989 * R + 0.5870 * G + 0.1140 * B);
+  }
+
+  @Override
+  public int compareTo(Pixel p) {
+      return x + y * image.width - p.x - p.y * image.width;
   }
 
 }

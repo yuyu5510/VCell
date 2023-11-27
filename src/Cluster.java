@@ -2,7 +2,7 @@ import java.util.List;
 import java.util.ArrayList;
 
 public class Cluster{
-  public final int id;
+  public int id;
   public List<Pixel> pixels;
   private long sumR;
   private long sumG;
@@ -25,6 +25,10 @@ public class Cluster{
 
   public int getID(){
     return id;
+  }
+
+  public void setID(int id){
+    this.id = id;
   }
 
   public int getSize(){
